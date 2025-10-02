@@ -1,1 +1,14 @@
-Estadia
+Proyecto Estadia1 - Avances
+
+Avance 1 (02/10/2025):
+- Creación del repositorio en GitHub.
+- Configuración inicial del proyecto.
+
+Avance 2 (03/10/2025):
+- Implementación del botón en la interfaz.
+- Prueba básica de funcionamiento.
+
+Avance 3 (04/10/2025):
+- Conexión del botón con la función de carga de imágenes.
+- Documentación del proceso en el archivo Estadia.txt.
+
