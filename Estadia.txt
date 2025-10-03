@@ -1,14 +1,228 @@
-Proyecto Estadia1 - Avances
+namespace figuras_v1 {
 
-Avance 1 (02/10/2025):
-- Creación del repositorio en GitHub.
-- Configuración inicial del proyecto.
+    export interface Geo {
+        id: number;
+        tipo: string;         
+        color: string;        
+        lado?: number;
+        radio?: number;
+        x: number;
+        y: number;
+    }
 
-Avance 2 (03/10/2025):
-- Implementación del botón en la interfaz.
-- Prueba básica de funcionamiento.
+    // Map para almacenar figuras
+    let figurasMap = new Map<number, Geo>();
+    let contadorId = 0;
 
-Avance 3 (04/10/2025):
-- Conexión del botón con la función de carga de imágenes.
-- Documentación del proceso en el archivo Estadia.txt.
+    let divbody = d3
+        .select("body")
+        .append("div")
+        .style("width", "1200px")
+        .style("height", "650px")
+        .style("background-color", "lightblue")
+        .style("position", "absolute")
+        .style("top", "40px")
+        .style("left", "150px");  
+    
+    divbody.append("h1")
+        .text("EDITOR DE FIGURAS GEOMETRICAS")
+        .style("color", "white")
+        .style("text-align", "center")
+        .style("margin-top", "10px");
+    
+    divbody.append("h2")
+        .text("CREA Y EDITA FIGURAS GEOMETRICAS CON D3.JS")
+        .style("font-size", "16px")
+        .style("color", "white")
+        .style("text-align", "center");
 
+    // Panel lateral
+    let inputdiv = divbody
+        .append("div")
+        .style("width", "300px")
+        .style("height", "460px")
+        .style("background-color", "white")
+        .style("position", "absolute")
+        .style("top", "100px")
+        .style("left", "10px");  
+    
+    inputdiv
+        .append("h3")
+        .text("Tipo de Figura :")
+        .style("font-size", "16px")
+        .style("color", "black")
+        .style("position", "absolute")
+        .style("top", "10px")
+        .style("left", "10px"); 
+    
+    // Combobox
+    let select = inputdiv
+        .append("select")
+        .style("position", "absolute")
+        .style("top", "70px")
+        .style("left", "10px")
+        .style("width", "250px")
+        .style("height", "30px");
+
+    ["Circulo", "Cuadrado"].forEach(op => {
+        select.append("option").attr("value", op.toLowerCase()).text(op);
+    });
+
+    // Contenedor dinámico de inputs
+    let controldiv = inputdiv.append("div")
+        .style("position", "absolute")
+        .style("top", "130px")
+        .style("left", "10px");
+
+    // Botón oculto al inicio
+    let btnMostrar = inputdiv
+        .append("button")
+        .text("Mostrar Figura")
+        .style("position", "absolute")
+        .style("left", "50px")
+        .style("top", "270px")
+        .style("display", "none");   
+
+    // Canvas SVG
+    let svg = divbody
+        .append("svg")
+        .attr("id", "canvas")
+        .attr("width", "800px")
+        .attr("height", "500px")
+        .style("position", "absolute")
+        .style("top", "90px")
+        .style("left", "350px")
+        .style("background", "white")
+        .style("border", "2px solid black");
+
+    // Variables de inputs
+    let sizeInput: d3.Selection<HTMLInputElement, unknown, HTMLElement, any> | null = null;
+    let colorPicker: d3.Selection<HTMLInputElement, unknown, HTMLElement, any> | null = null;
+
+    // Definir el drag para círculos
+    let dragCircle = d3.drag<SVGCircleElement, Geo>()
+        .on("drag", function (event, d) {
+            d.x = event.x;
+            d.y = event.y;
+            d3.select(this)
+                .attr("cx", event.x)
+                .attr("cy", event.y);
+        });
+
+    // Definir el drag para rectángulos
+    let dragRect = d3.drag<SVGRectElement, Geo>()
+        .on("drag", function (event, d) {
+            let lado = d.lado || 50;
+            d.x = event.x;
+            d.y = event.y;
+            d3.select(this)
+                .attr("x", event.x - lado / 2)
+                .attr("y", event.y - lado / 2);
+        });
+
+    // Cambio de figura en el combo
+    select.on("change", function () {
+        const value = (this as HTMLSelectElement).value;
+
+        // Limpiar inputs anteriores
+        controldiv.selectAll("*").remove();
+
+        if (value === "circulo") {
+            controldiv.append("label").text("Radio (px):");
+            sizeInput = controldiv.append("input")
+                .attr("type", "number")
+                .attr("placeholder", "Ingresa el radio");
+        } else if (value === "cuadrado") {
+            controldiv.append("label").text("Lado (px):");
+            sizeInput = controldiv.append("input")
+                .attr("type", "number")
+                .attr("placeholder", "Ingresa el lado");
+        }
+
+        // Input color
+        controldiv
+            .append("label")
+            .text("Color:")
+            .style("margin-top", "10px")
+            .style("font-size","14px")
+            .style("color","black")
+            .style("position","absolute")
+            .style("top","50px")
+            .style("left","5px");
+
+        colorPicker = controldiv
+            .append("input")
+            .attr("type", "color")
+            .attr("value", "#000000")
+            .style("width", "60px")
+            .style("height", "30px")
+            .style("cursor", "pointer")
+            .style("position", "absolute")
+            .style("top", "90px")
+            .style("left", "5px")
+            .style("width", "250px");
+
+        // Ahora sí se muestra el botón
+        btnMostrar.style("display", "block");
+    });
+
+    // Función para renderizar con JOIN
+    function renderizarFiguras() {
+        const figurasArray = Array.from(figurasMap.values());
+
+        // JOIN para círculos
+        let circulos = svg.selectAll<SVGCircleElement, Geo>("circle")
+            .data(figurasArray.filter(f => f.tipo === "circulo"), d => d.id.toString());
+
+        // Exit
+        circulos.exit().remove();
+
+        // Enter
+        circulos.enter()
+            .append("circle")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("r", d => d.radio || 50)
+            .attr("fill", d => d.color)
+            .call(dragCircle);
+
+        // JOIN para cuadrados
+        let rectangulos = svg.selectAll<SVGRectElement, Geo>("rect")
+            .data(figurasArray.filter(f => f.tipo === "cuadrado"), d => d.id.toString());
+
+        // Exit
+        rectangulos.exit().remove();
+
+        // Enter
+        rectangulos.enter()
+            .append("rect")
+            .attr("x", d => d.x - (d.lado || 50) / 2)
+            .attr("y", d => d.y - (d.lado || 50) / 2)
+            .attr("width", d => d.lado || 50)
+            .attr("height", d => d.lado || 50)
+            .attr("fill", d => d.color)
+            .call(dragRect);
+    }
+
+    // Click en el botón
+    btnMostrar.on("click", () => {
+        const tipo = (select.node() as HTMLSelectElement).value;
+        const size = sizeInput ? +(sizeInput.node() as HTMLInputElement).value : 50;
+        const color = colorPicker ? (colorPicker.node() as HTMLInputElement).value : "#000000";
+
+        // Crear nueva figura y agregarla al Map
+        const nuevaFigura: Geo = {
+            id: contadorId++,
+            tipo: tipo,
+            color: color,
+            x: 200,
+            y: 200,
+            ...(tipo === "circulo" ? { radio: size } : { lado: size })
+        };
+
+        figurasMap.set(nuevaFigura.id, nuevaFigura);
+
+        // Renderizar usando JOIN
+        renderizarFiguras();
+    });
+}
