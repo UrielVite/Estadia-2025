@@ -25,13 +25,13 @@ namespace figuras_v1 {
         .style("left", "150px");  
     
     divbody.append("h1")
-        .text("EDITOR DE FIGURAS GEOMETRICAS")
+        .text("EDITOR DE FIGURAS GEOMÉTRICAS")
         .style("color", "white")
         .style("text-align", "center")
         .style("margin-top", "10px");
     
     divbody.append("h2")
-        .text("CREA Y EDITA FIGURAS GEOMETRICAS CON D3.JS")
+        .text("CREA Y EDITA FIGURAS GEOMÉTRICAS CON D3.JS")
         .style("font-size", "16px")
         .style("color", "white")
         .style("text-align", "center");
@@ -99,16 +99,14 @@ namespace figuras_v1 {
     let sizeInput: d3.Selection<HTMLInputElement, unknown, HTMLElement, any> | null = null;
     let colorPicker: d3.Selection<HTMLInputElement, unknown, HTMLElement, any> | null = null;
 
-    // Definir el drag para círculos
-    let dragFigura = d3.drag<SVGElement, Geo>()
+    // Drag para figuras dentro del grupo
+    let dragFigura = d3.drag<SVGGElement, Geo>()
         .on("drag", function (event, d) {
             d.x = event.x;
             d.y = event.y;
             d3.select(this)
-                .attr("transform", `translate(${d.x},${d.y})`);
+                .attr("transform", `translate(${d.x}, ${d.y})`);
         });
-
-    
 
     // Cambio de figura en el combo
     select.on("change", function () {
@@ -171,7 +169,7 @@ namespace figuras_v1 {
         let gruposEnter = grupos.enter()
             .append("g")
             .attr("class", "figura")
-            .attr("transform", d => 'translate(${d.x}, ${d.y})')
+            .attr("transform", d => `translate(${d.x}, ${d.y})`)
             .call(dragFigura);
 
         // Dibujar figura dentro del grupo
@@ -179,7 +177,7 @@ namespace figuras_v1 {
             const g = d3.select(this);
 
             if (d.tipo === "circulo") {
-                g.append("circle")
+                g.append("circle") 
                     .attr("r", d.radio || 50)
                     .attr("fill", d.color);
             } else if (d.tipo === "cuadrado") {
@@ -229,8 +227,22 @@ namespace figuras_v1 {
 
         // UPDATE
         grupos
-            .attr("transform", d => 'translate(${d.x}, ${d.y})')
+    .attr("transform", d => `translate(${d.x}, ${d.y})`)
+    .each(function (d) {
+        const g = d3.select(this);
+        if (d.tipo === "circulo") {
+            g.select("circle").attr("r", d.radio!).attr("fill", d.color);
+        } else {
+            g.select("rect")
+                .attr("width", d.lado!)
+                .attr("height", d.lado!)
+                .attr("x", -d.lado! / 2)
+                .attr("y", -d.lado! / 2)
+                .attr("fill", d.color);
+        }
+    });
     }
+
     // Click en el botón
     btnMostrar.on("click", () => {
         const tipo = (select.node() as HTMLSelectElement).value;
@@ -244,14 +256,12 @@ namespace figuras_v1 {
             color: color,
             x: 200,
             y: 200,
-            
-            //operador que dice que si es un circulo le agrega el radio y si no es la figura circulo le agrega el lado de la otra figura
+
+            //Evalua la condicion que si es circulo agrega radio si no lo es agrega el lado
             ...(tipo === "circulo" ? { radio: size } : { lado: size })
         };
 
         figurasMap.set(nuevaFigura.id, nuevaFigura);
-
-        // Renderizar usando JOIN
         renderizarFiguras();
     });
 }
