@@ -100,25 +100,15 @@ namespace figuras_v1 {
     let colorPicker: d3.Selection<HTMLInputElement, unknown, HTMLElement, any> | null = null;
 
     // Definir el drag para círculos
-    let dragCircle = d3.drag<SVGCircleElement, Geo>()
+    let dragFigura = d3.drag<SVGElement, Geo>()
         .on("drag", function (event, d) {
             d.x = event.x;
             d.y = event.y;
             d3.select(this)
-                .attr("cx", event.x)
-                .attr("cy", event.y);
+                .attr("transform", `translate(${d.x},${d.y})`);
         });
 
-    // Definir el drag para rectángulos
-    let dragRect = d3.drag<SVGRectElement, Geo>()
-        .on("drag", function (event, d) {
-            let lado = d.lado || 50;
-            d.x = event.x;
-            d.y = event.y;
-            d3.select(this)
-                .attr("x", event.x - lado / 2)
-                .attr("y", event.y - lado / 2);
-        });
+    
 
     // Cambio de figura en el combo
     select.on("change", function () {
@@ -166,44 +156,81 @@ namespace figuras_v1 {
         btnMostrar.style("display", "block");
     });
 
-    // Función para renderizar con JOIN
+    // Función para renderizar con JOIN y agregar íconos + y -
     function renderizarFiguras() {
         const figurasArray = Array.from(figurasMap.values());
 
-        // JOIN para círculos
-        let circulos = svg.selectAll<SVGCircleElement, Geo>("circle")
-            .data(figurasArray.filter(f => f.tipo === "circulo"), d => d.id.toString());
+        // JOIN general con grupos <g>
+        let grupos = svg.selectAll<SVGGElement, Geo>("g.figura")
+            .data(figurasArray, d => d.id.toString());
 
-        // Exit
-        circulos.exit().remove();
+        // EXIT
+        grupos.exit().remove();
 
-        // Enter
-        circulos.enter()
-            .append("circle")
-            .attr("cx", d => d.x)
-            .attr("cy", d => d.y)
-            .attr("r", d => d.radio || 50)
-            .attr("fill", d => d.color)
-            .call(dragCircle);
+        // ENTER
+        let gruposEnter = grupos.enter()
+            .append("g")
+            .attr("class", "figura")
+            .attr("transform", d => 'translate(${d.x}, ${d.y})')
+            .call(dragFigura);
 
-        // JOIN para cuadrados
-        let rectangulos = svg.selectAll<SVGRectElement, Geo>("rect")
-            .data(figurasArray.filter(f => f.tipo === "cuadrado"), d => d.id.toString());
+        // Dibujar figura dentro del grupo
+        gruposEnter.each(function (d) {
+            const g = d3.select(this);
 
-        // Exit
-        rectangulos.exit().remove();
+            if (d.tipo === "circulo") {
+                g.append("circle")
+                    .attr("r", d.radio || 50)
+                    .attr("fill", d.color);
+            } else if (d.tipo === "cuadrado") {
+                let lado = d.lado || 50;
+                g.append("rect")
+                    .attr("x", -lado / 2)
+                    .attr("y", -lado / 2)
+                    .attr("width", lado)
+                    .attr("height", lado)
+                    .attr("fill", d.color);
+            }
 
-        // Enter
-        rectangulos.enter()
-            .append("rect")
-            .attr("x", d => d.x - (d.lado || 50) / 2)
-            .attr("y", d => d.y - (d.lado || 50) / 2)
-            .attr("width", d => d.lado || 50)
-            .attr("height", d => d.lado || 50)
-            .attr("fill", d => d.color)
-            .call(dragRect);
+            // Ícono "+"
+            g.append("text")
+                .text("+")
+                .attr("x", 15)
+                .attr("y", -15)
+                .attr("font-size", "20px")
+                .attr("fill", "green")
+                .style("cursor", "pointer")
+                .on("click", function (event) {
+                    event.stopPropagation();
+                    let figura = figurasMap.get(d.id);
+                    if (figura) {
+                        // Aumenta tamaño como "update"
+                        if (figura.tipo === "circulo") figura.radio! += 5;
+                        else figura.lado! += 5;
+                        figurasMap.set(figura.id, figura);
+                        renderizarFiguras();
+                    } 
+                });
+
+            // Ícono "-"
+            g.append("text")
+                .text("−")
+                .attr("x", -30)
+                .attr("y", -15)
+                .attr("font-size", "20px")
+                .attr("fill", "red")
+                .style("cursor", "pointer")
+                .on("click", function (event) {
+                    event.stopPropagation();
+                    figurasMap.delete(d.id);
+                    renderizarFiguras();
+                });
+        });
+
+        // UPDATE
+        grupos
+            .attr("transform", d => 'translate(${d.x}, ${d.y})')
     }
-
     // Click en el botón
     btnMostrar.on("click", () => {
         const tipo = (select.node() as HTMLSelectElement).value;
@@ -217,6 +244,8 @@ namespace figuras_v1 {
             color: color,
             x: 200,
             y: 200,
+            
+            //operador que dice que si es un circulo le agrega el radio y si no es la figura circulo le agrega el lado de la otra figura
             ...(tipo === "circulo" ? { radio: size } : { lado: size })
         };
 
